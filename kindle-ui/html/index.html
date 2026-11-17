@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<!--
+
+  Reference UI shell for the Kindle HA display.
+
+  This is a deliberately minimal, dependency-free ES5 app written for the
+  2012-era WebKit in old Kindle firmwares (XMLHttpRequest only, table
+  layouts, -webkit- transforms). It implements the contract the on-device
+  kiosk scripts depend on:
+
+    * Everything is driven by config.js (location, panel size, rooms,
+      devices) - no editing of this file is required.
+    * The URL hash '#sleep' renders the closed-padlock sleep view. The
+      sleep job navigates here before suspending so the frozen image is
+      honest about its state.
+    * Taps re-render immediately; every successful interaction also
+      refreshes the affected entity.
+
+  REPLACING THIS UI: the served web root (kindle-ui/html/) is plain
+  static files. A UI produced with figcraft (or anything else) can
+  replace it entirely as long as it keeps the '#sleep' view contract
+  and stays ES5/no-module/no-fetch for old firmwares. See docs/UI.md.
+
+-->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>HA Display</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #fff; color: #000;
+               font-family: sans-serif; }
+  #rotated {
+    -webkit-transform-origin: 0 0;
+    position: absolute;
+    top: 0; left: 0;
+    overflow: hidden;
+  }
+  .topbar { font-weight: bold; padding: 8px; border-bottom: 3px solid #000; }
+  .topbar .right { float: right; font-weight: normal; }
+  .padlock { font-size: 42px; text-align: center; margin-top: 40%;
+             font-weight: bold; }
+  .state { text-align: center; font-size: 20px; margin-top: 12px; }
+  table.rooms { width: 100%; border-collapse: collapse; }
+  td.room { vertical-align: top; padding: 8px; border: 2px solid #000; }
+  .roomname { font-weight: bold; border-bottom: 2px solid #000;
+              padding: 4px 0; margin-bottom: 6px; }
+  .device { margin: 10px 0; }
+  .device .name { font-size: 18px; }
+  .device .state { text-align: left; font-size: 16px; margin: 2px 0 6px 0; }
+  button {
+    font-size: 20px; padding: 10px 18px; margin: 2px;
+    border: 2px solid #000; background: #fff; color: #000;
+    -webkit-border-radius: 4px;
+  }
+  button.on { background: #000; color: #fff; }
+  .stepper button { width: 48px; }
+</style>
+</head>
+<body>
+<div id="rotated"></div>
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var W = CONFIG.panelH;  // rotated: landscape width = portrait height
+  var H = CONFIG.panelW;
+  var wrap = document.getElementById('rotated');
+  wrap.style.width = H + 'px';
+  wrap.style.height = W + 'px';
+  wrap.style.overflow = 'hidden';
+  document.body.style.width = CONFIG.panelW + 'px';
+  document.body.style.height = CONFIG.panelH + 'px';
+  document.body.style.overflow = 'hidden';
+  wrap.style.webkitTransform =
+    'rotate(90deg) translate(0, -' + H + 'px)';
+
+  var cache = {};       // entity -> state object
+  var idleTimer = null;
+
+  function get(url, cb) {
+    var x = new XMLHttpRequest();
+    x.open('GET', url, true);
+    x.onreadystatechange = function () {
+      if (x.readyState === 4) {
+        if (x.status === 200) {
+          try { cb(JSON.parse(x.responseText)); } catch (e) {}
+        } else { cb(null); }
+      }
+    };
+    x.send(null);
+  }
+
+  function callService(domain, service, data, cb) {
+    var x = new XMLHttpRequest();
+    x.open('POST', '/api/services/' + domain + '/' + service, true);
+    x.setRequestHeader('Content-Type', 'application/json');
+    x.onreadystatechange = function () {
+      if (x.readyState === 4 && cb) { cb(x.status); }
+    };
+    x.send(JSON.stringify(data));
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function refreshEntity(entity, cb) {
+    get('/api/states/' + entity, function (st) {
+      if (st) { cache[entity] = st; }
+      if (cb) { cb(st); }
+    });
+  }
+
+  // ---- renderers per device type ----
+
+  function renderToggle(dev) {
+    var st = cache[dev.entity];
+    var on = st && st.state === 'on';
+    return '<div class="device"><div class="name">' + esc(dev.name) +
+      '</div><div class="state">' + esc(st ? st.state : '...') +
+      '</div><button class="' + (on ? 'on' : '') + '" data-t="' +
+      esc(dev.entity) + '">' + (on ? 'Turn off' : 'Turn on') +
+      '</button></div>';
+  }
+
+  function renderClimate(dev) {
+    var st = cache[dev.entity];
+    var modes = (st && st.attributes && st.attributes.hvac_modes) || [];
+    var cur = st && st.attributes && st.attributes.temperature;
+    var btns = '';
+    for (var i = 0; i < modes.length; i++) {
+      var active = st && st.state === modes[i];
+      btns += '<button class="' + (active ? 'on' : '') +
+        '" data-cm="' + esc(dev.entity) + '" data-mode="' + esc(modes[i]) +
+        '">' + esc(modes[i]) + '</button>';
+    }
+    return '<div class="device"><div class="name">' + esc(dev.name) +
+      '</div><div class="state">' +
+      esc(st ? (st.state + (cur ? ' / ' + cur + '\u00B0C' : '')) : '...') +
+      '</div><div class="stepper">' +
+      '<button data-cd="' + esc(dev.entity) + '" data-delta="-0.5">-</button>' +
+      '<button data-cd="' + esc(dev.entity) + '" data-delta="0.5">+</button>' +
+      '</div><div>' + btns + '</div></div>';
+  }
+
+  function renderLock(dev) {
+    var st = cache[dev.entity];
+    var locked = st && st.state === 'locked';
+    return '<div class="device"><div class="name">' + esc(dev.name) +
+      '</div><div class="state">' + esc(st ? st.state : '...') +
+      '</div><button data-l="' + esc(dev.entity) + '">' +
+      (locked ? 'Unlock' : 'Lock') + '</button></div>';
+  }
+
+  function renderSensor(dev) {
+    var st = cache[dev.entity];
+    var u = st && st.attributes ? (st.attributes.unit_of_measurement || '') : '';
+    return '<div class="device"><div class="name">' + esc(dev.name) +
+      '</div><div class="state">' +
+      esc(st ? (st.state + ' ' + u).replace(/\s+$/, '') : '...') +
+      '</div></div>';
+  }
+
+  var RENDERERS = {
+    toggle: renderToggle,
+    climate: renderClimate,
+    lock: renderLock,
+    sensor: renderSensor
+  };
+
+  // ---- views ----
+
+  function renderSleep() {
+    wrap.innerHTML =
+      '<div class="padlock">\uD83D\uDD12</div>' +
+      '<div class="state">ASLEEP &mdash; press the power button to wake</div>';
+  }
+
+  function renderDashboard() {
+    var html = '<div class="topbar">' + esc(CONFIG.locationLabel) +
+      '<span class="right" id="clock"></span></div>';
+    html += '<table class="rooms"><tr>';
+    for (var r = 0; r < ROOMS.length; r++) {
+      var room = ROOMS[r];
+      html += '<td class="room"><div class="roomname">' + esc(room.name) +
+        '</div>';
+      for (var d = 0; d < room.devices.length; d++) {
+        var dev = room.devices[d];
+        var fn = RENDERERS[dev.type];
+        html += fn ? fn(dev) : '';
+      }
+      html += '</td>';
+    }
+    html += '</tr></table>';
+    wrap.innerHTML = html;
+    tickClock();
+  }
+
+  function tickClock() {
+    var el = document.getElementById('clock');
+    if (el) {
+      var d = new Date();
+      function p(n) { return n < 10 ? '0' + n : '' + n; }
+      el.innerHTML = p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+  }
+
+  // ---- refresh cycle ----
+
+  function refreshAll(render) {
+    var pending = 0;
+    var done = function () { pending--; if (pending === 0 && render) { render(); } };
+    for (var r = 0; r < ROOMS.length; r++) {
+      for (var d = 0; d < ROOMS[r].devices.length; d++) {
+        pending++;
+        refreshEntity(ROOMS[r].devices[d].entity, done);
+      }
+    }
+    if (pending === 0 && render) { render(); }
+  }
+
+  function armIdle() {
+    if (idleTimer) { clearTimeout(idleTimer); }
+    idleTimer = setTimeout(function () {
+      location.hash = '#sleep';
+    }, CONFIG.idleSeconds * 1000);
+  }
+
+  function wake() {
+    if (location.hash === '#sleep') {
+      location.hash = '';
+      refreshAll(renderDashboard);
+    }
+    armIdle();
+  }
+
+  document.body.addEventListener('touchstart', wake, false);
+  document.body.addEventListener('mousedown', wake, false);
+
+  // ---- interaction ----
+
+  function handleTap(target) {
+    var entity, delta, mode;
+    if (target.getAttribute('data-t')) {
+      entity = target.getAttribute('data-t');
+      callService('homeassistant', 'toggle', { entity_id: entity },
+        function () { refreshEntity(entity, renderDashboard); });
+    } else if (target.getAttribute('data-cm')) {
+      entity = target.getAttribute('data-cm');
+      mode = target.getAttribute('data-mode');
+      callService('climate', 'set_hvac_mode',
+        { entity_id: entity, hvac_mode: mode },
+        function () { refreshEntity(entity, renderDashboard); });
+    } else if (target.getAttribute('data-cd')) {
+      entity = target.getAttribute('data-cd');
+      delta = parseFloat(target.getAttribute('data-delta'), 10);
+      var st = cache[entity];
+      var cur = st && st.attributes ? st.attributes.temperature : 20;
+      callService('climate', 'set_temperature',
+        { entity_id: entity, temperature: cur + delta },
+        function () { refreshEntity(entity, renderDashboard); });
+    } else if (target.getAttribute('data-l')) {
+      entity = target.getAttribute('data-l');
+      var locked = cache[entity] && cache[entity].state === 'locked';
+      callService('lock', locked ? 'unlock' : 'lock',
+        { entity_id: entity },
+        function () { refreshEntity(entity, renderDashboard); });
+    }
+  }
+
+  document.body.addEventListener('click', function (ev) {
+    var t = ev.target;
+    while (t && t !== document.body) {
+      if (t.tagName === 'BUTTON') { handleTap(t); break; }
+      t = t.parentNode;
+    }
+  }, false);
+
+  // ---- boot ----
+
+  setInterval(tickClock, 30000);
+
+  if (location.hash === '#sleep') {
+    renderSleep();
+    // The wake job reloads this page on resume; if we land here while
+    // actually awake, fall through to the dashboard after a moment.
+    setTimeout(wake, 3000);
+  } else {
+    refreshAll(renderDashboard);
+    setInterval(function () { refreshAll(renderDashboard); }, 60000);
+    armIdle();
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (location.hash === '#sleep') { renderSleep(); }
+  });
+})();
+</script>
+</body>
+</html>

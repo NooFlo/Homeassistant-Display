@@ -1,0 +1,10 @@
+# Merge into your Home Assistant configuration.yaml.
+#
+# input_boolean.kindle_wake is the presence-driven wake signal. Set it
+# to 'on' from any automation (e.g. a person-detection or phone-presence
+# sensor) and the Kindle - if it is in light sleep - reloads its
+# dashboard within POLL seconds and becomes touch-interactive.
+input_boolean:
+  kindle_wake:
+    name: Kindle Wake
+    icon: mdi:eye

@@ -1,0 +1,43 @@
+# Example presence-driven wake automation.
+#
+# Replace person.you / your presence setup with whatever signals
+# someone is home and near the display. The Kindle polls
+# input_boolean.kindle_wake every POLL seconds while in light sleep,
+# so wake latency is bounded by that poll interval (default 5s).
+#
+# Merge into your automations.
+
+alias: Wake Kindle display on presence
+mode: single
+trigger:
+  - platform: state
+    entity_id:
+      - person.you
+    to: home
+    id: someone_home
+  - platform: state
+    entity_id:
+      - binary_sensor.motion_hallway
+    to: "on"
+    id: hallway_motion
+condition:
+  # Only bother waking it when it would be asleep anyway.
+  - condition: time
+    after: "07:00:00"
+    before: "23:00:00"
+action:
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.kindle_wake
+  # Presence off after a grace period lets the Kindle deep sleep again.
+  - wait_for_trigger:
+      - platform: state
+        entity_id:
+          - person.you
+        to: not_home
+        for: "00:30:00"
+    timeout: "06:00:00"
+    continue_on_timeout: true
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.kindle_wake

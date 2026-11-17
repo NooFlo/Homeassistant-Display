@@ -1,0 +1,50 @@
+# Serves the dashboard web app and proxies Home Assistant API calls,
+# attaching the authorization token server-side so no credentials ever
+# reach the Kindle. The Kindle only ever speaks plain HTTP on the LAN;
+# nginx can reach HA over HTTPS if needed.
+#
+# Derived from the token-proxy pattern in higoorc/kindle-dash (MIT).
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # The stock browser aggressively reuses stale page snapshots.
+    location / {
+        add_header Cache-Control "no-store, must-revalidate";
+        add_header Pragma "no-cache";
+    }
+
+    # Kindle-side scripts hand-write HTTP with `nc`; keep responses small.
+    location = /health {
+        return 200 'ok\n';
+        add_header Content-Type text/plain;
+    }
+
+    # Authenticated passthrough to Home Assistant.
+    location /api/ {
+        proxy_pass ${HA_URL}/api/;
+        proxy_set_header Authorization "Bearer ${KINDLE_HA_TOKEN}";
+        proxy_set_header Host $proxy_host;
+        proxy_read_timeout 30s;
+    }
+
+    # The wake/sleep scripts poll these convenience endpoints instead of
+    # parsing full entity JSON with busybox tools.
+    location = /wake {
+        proxy_pass ${HA_URL}/api/states/input_boolean.kindle_wake;
+        proxy_set_header Authorization "Bearer ${KINDLE_HA_TOKEN}";
+        proxy_set_header Host $proxy_host;
+    }
+
+    # Weather passthrough for UIs that fetch forecasts directly.
+    # (Older Kindles cannot negotiate modern TLS themselves.)
+    location /weather/ {
+        proxy_pass https://api.open-meteo.com/;
+        proxy_set_header Host api.open-meteo.com;
+        proxy_ssl_server_name on;
+    }
+}

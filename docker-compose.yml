@@ -1,0 +1,12 @@
+services:
+  kindle-ui:
+    image: nginx:alpine
+    container_name: kindle-ui
+    restart: unless-stopped
+    ports:
+      - "${KINDLE_UI_PORT:-8124}:80"
+    env_file:
+      - .env
+    volumes:
+      - ./server/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./kindle-ui/html:/usr/share/nginx/html:ro
