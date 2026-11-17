@@ -38,6 +38,9 @@ as the replacement respects the constraints below.
 
 A figcraft-generated UI should output into `kindle-ui/html/` (or change
 the bind mount in `docker-compose.yml` to its own build directory).
+Design guidance for the generator lives in
+**[UI-DESIGN-PROMPT.md](UI-DESIGN-PROMPT.md)** (e-ink shading techniques,
+B/W art styles, touch-interaction rules).
 Iterate from a desktop browser at `http://<server-ip>:8124` first — it is
 much faster than the e-ink refresh cycle. Keep `config.js` as-is or
 extend it; keep the `#sleep` contract.

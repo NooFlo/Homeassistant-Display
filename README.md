@@ -49,7 +49,7 @@ Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Full guide:
 | `kindle/` | On-device files: sleep engine, upstart jobs, KUAL extension |
 | `homeassistant/` | HA config snippet + presence-wake automation example |
 | `scripts/` | Kindle installer |
-| `docs/` | Install guide, architecture, UI contract, attribution |
+| `docs/` | Install guide, architecture, UI contract, UI design prompt, attribution |
 
 ## How it works
 
