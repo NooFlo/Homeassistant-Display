@@ -9,7 +9,9 @@ for your exact model and firmware. Critical points:
   immediately if the firmware is still old enough.
 - Install **KUAL**, **MRPI**, and **USBNetwork** (SSH over WiFi).
 
-Model-specific values you will need (defaults target a Paperwhite 1):
+Model-specific values, per-generation differences (init system, browser
+launch, non-touch models) and a generic install procedure for any model
+are in **[MODELS.md](MODELS.md)**. Defaults target a Paperwhite 1:
 
 | Setting | Where | Default |
 |---|---|---|
@@ -78,6 +80,9 @@ for a low-battery notification automation.
   Remove `/mnt/us/DISABLE_KIOSK` and use Start Kiosk to resume.
 
 ## Troubleshooting
+
+See **[MODELS.md](MODELS.md)** for model-specific gotchas (WiFi quirks,
+battery reporting, Oasis rotation, Scribe sizing).
 
 - **Controls do nothing** — token proxy. Check `docker logs kindle-ui`
   for 401s; restart the container after `.env` changes.

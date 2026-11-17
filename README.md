@@ -38,7 +38,8 @@ KINDLE_IP=192.168.1.50 bash scripts/install-kindle.sh
 ```
 
 Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Full guide:
-**[docs/INSTALL.md](docs/INSTALL.md)**.
+**[docs/INSTALL.md](docs/INSTALL.md)**; per-model instructions:
+**[docs/MODELS.md](docs/MODELS.md)**.
 
 ## Repository layout
 
