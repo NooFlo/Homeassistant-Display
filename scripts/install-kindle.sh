@@ -1,12 +1,16 @@
 #!/bin/sh
 # install-kindle.sh - push the kiosk onto a jailbroken Kindle over SSH.
 #
-# Prerequisites on the device (see docs/INSTALL.md):
+# Prerequisites on the device (see docs/INSTALL.md and docs/MODELS.md):
 #   - jailbreak + KUAL + MRPI + USBNetwork (SSH over WiFi)
 #   - the server (docker compose up -d) running and reachable
 #
 # Usage:
 #   KINDLE_IP=192.168.1.50 bash scripts/install-kindle.sh
+#
+# On modern firmware (Paperwhite 11 / EY21, 5.14+) upstart is not used;
+# run in KUAL-only mode and start the kiosk from the KUAL menu instead:
+#   KINDLE_IP=192.168.1.50 KUAL_ONLY=1 bash scripts/install-kindle.sh
 #
 # Safe to re-run at any time.
 
@@ -27,10 +31,8 @@ echo "    dashboard server: $SERVER_IP:$SERVER_PORT"
 
 ssh "root@$KINDLE_IP" "mkdir -p /mnt/us/kiosk/bin /mnt/us/extensions/KindleKiosk/bin"
 
-for f in kiosk.env; do
-  echo "    pushing kindle/$f"
-  ssh "root@$KINDLE_IP" "cat > /mnt/us/kiosk/$f" < "$REPO_ROOT/kindle/$f"
-done
+echo "    pushing kindle/kiosk.env"
+ssh "root@$KINDLE_IP" "cat > /mnt/us/kiosk/kiosk.env" < "$REPO_ROOT/kindle/kiosk.env"
 
 echo "    pushing kindle/bin/kiosk-sleep.sh"
 ssh "root@$KINDLE_IP" "cat > /mnt/us/kiosk/bin/kiosk-sleep.sh" \
@@ -48,7 +50,16 @@ echo "    pushing KUAL menu.json"
 ssh "root@$KINDLE_IP" "cat > /mnt/us/extensions/KindleKiosk/menu.json" \
   < "$REPO_ROOT/kindle/kual/KindleKiosk/menu.json"
 
-# --- rootfs: upstart jobs --------------------------------------------------
+# --- upstart jobs (classic firmware only) ----------------------------------
+
+if [ "$KUAL_ONLY" = "1" ]; then
+  echo "==> KUAL_ONLY=1: skipping upstart jobs (modern firmware)."
+  echo "==> Done. Start the dashboard from KUAL -> KindleKiosk -> Start Kiosk."
+  echo "    (Re-run the KUAL entry after each reboot; battery/sleep engine"
+  echo "     runs from the same menu entry.)"
+  exit 0
+fi
+
 # (cat > file because scp is not reliably present on these devices)
 
 echo "    remounting rootfs read-write"

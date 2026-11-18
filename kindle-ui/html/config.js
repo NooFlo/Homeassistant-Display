@@ -9,8 +9,10 @@ var CONFIG = {
   lat: 52.52,
   lon: 13.405,
   timezone: 'Europe/Berlin',
-  panelW: 758,
-  panelH: 1024,
+  // Defaults target the Kindle Paperwhite 11 (EY21, 2021): 1236x1648.
+  // Other models: see docs/MODELS.md.
+  panelW: 1236,
+  panelH: 1648,
   // Seconds without a touch before the app switches to the sleep view.
   // The on-device sleep job suspends independently of this; the sleep
   // view just makes the frozen image honest about its state.

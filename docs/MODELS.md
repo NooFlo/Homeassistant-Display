@@ -1,6 +1,9 @@
 # Installing on different Kindles
 
-The kiosk is developed against a **Paperwhite 1** (firmware 5.3.x,
+The **Paperwhite 11 (EY21, 2021)** is the default target and has its own
+guide: **[EY21.md](EY21.md)**. This page covers all other models.
+
+The kiosk was originally developed against a **Paperwhite 1** (firmware 5.3.x,
 upstart-based). Other models work with the adjustments below. This guide
 covers the common jailbroken generations; if your model is not listed, the
 generic procedure at the end applies.

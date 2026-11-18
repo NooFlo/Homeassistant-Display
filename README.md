@@ -32,13 +32,19 @@ device can spend most of its life asleep and still *look* on.
 ## Quick start
 
 ```sh
-cp .env.example .env          # set HA_URL and a HA long-lived token
-docker compose up -d         # dashboard on http://<server>:8124
-KINDLE_IP=192.168.1.50 bash scripts/install-kindle.sh
+cp .env.example .env       # set HA_URL and a HA long-lived token
+docker compose up -d      # dashboard on http://<server>:8124
+# Paperwhite 11 (EY21) - the default target:
+KINDLE_IP=192.168.1.50 KUAL_ONLY=1 bash scripts/install-kindle.sh
+# ... then on the Kindle: KUAL -> KindleKiosk -> Start Kiosk
+# Older upstart-based models:
+KINDLE_IP=192.168.1.50 bash scripts/install-kindle.sh   # installs + reboots
 ```
 
-Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Full guide:
-**[docs/INSTALL.md](docs/INSTALL.md)**; per-model instructions:
+Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Default target is
+the **Kindle Paperwhite 11 (EY21)** — its dedicated guide is
+**[docs/EY21.md](docs/EY21.md)**. General guide:
+**[docs/INSTALL.md](docs/INSTALL.md)**; other models:
 **[docs/MODELS.md](docs/MODELS.md)**.
 
 ## Repository layout
@@ -50,7 +56,7 @@ Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Full guide:
 | `kindle/` | On-device files: sleep engine, upstart jobs, KUAL extension |
 | `homeassistant/` | HA config snippet + presence-wake automation example |
 | `scripts/` | Kindle installer |
-| `docs/` | Install guide, architecture, UI contract, UI design prompt, attribution |
+| `docs/` | EY21 guide, install guide, architecture, UI contract, UI design prompt, model guide, attribution |
 
 ## How it works
 
