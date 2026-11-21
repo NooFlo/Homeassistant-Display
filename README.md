@@ -33,17 +33,21 @@ device can spend most of its life asleep and still *look* on.
 
 ```sh
 cp .env.example .env       # set HA_URL and a HA long-lived token
-docker compose up -d      # dashboard on http://<server>:8124
-# Paperwhite 11 (EY21) - the default target:
+docker compose up -d      # dashboard + renderer on http://<server>:8124
+# Paperwhite 11 (EY21) - the default target (build native helper first):
+make -C kindle/native
 KINDLE_IP=192.168.1.50 KUAL_ONLY=1 bash scripts/install-kindle.sh
-# ... then on the Kindle: KUAL -> KindleKiosk -> Start Kiosk
+# ... then on the Kindle: KUAL -> KindleNative -> Start Native Kiosk
 # Older upstart-based models:
 KINDLE_IP=192.168.1.50 bash scripts/install-kindle.sh   # installs + reboots
 ```
 
 Requires a jailbroken Kindle with KUAL + USBNetwork (SSH). Default target is
 the **Kindle Paperwhite 11 (EY21)** — its dedicated guide is
-**[docs/EY21.md](docs/EY21.md)**. General guide:
+**[docs/EY21.md](docs/EY21.md)**. Two kiosk modes: the **native kiosk**
+(recommended, framework-less: server-rendered PNG + touch regions,
+**[docs/NATIVE.md](docs/NATIVE.md)**) and the **browser kiosk**
+(web app in the stock browser). General guide:
 **[docs/INSTALL.md](docs/INSTALL.md)**; other models:
 **[docs/MODELS.md](docs/MODELS.md)**.
 
@@ -51,12 +55,14 @@ the **Kindle Paperwhite 11 (EY21)** — its dedicated guide is
 
 | Path | What it is |
 |---|---|
-| `kindle-ui/html/` | Dashboard web app (ES5, single file + `config.js`) |
+| `kindle-ui/html/` | Browser-dashboard web app (ES5, single file + `config.js`) |
+| `renderer/` | Native-mode renderer: HA state → PNG + touch-region map |
+| `kindle/native/` | Native-mode client: sleep engine, evdev tap helper, KUAL entries |
 | `server/` | nginx token-proxy template |
 | `kindle/` | On-device files: sleep engine, upstart jobs, KUAL extension |
 | `homeassistant/` | HA config snippet + presence-wake automation example |
 | `scripts/` | Kindle installer |
-| `docs/` | EY21 guide, install guide, architecture, UI contract, UI design prompt, model guide, attribution |
+| `docs/` | EY21 guide, native-mode guide, install guide, architecture, UI contract, UI design prompt, model guide, attribution |
 
 ## How it works
 

@@ -1,0 +1,21 @@
+{
+  "locationLabel": "Home",
+  "panel": { "w": 1236, "h": 1648 },
+  "rooms": [
+    {
+      "name": "Living Room",
+      "devices": [
+        { "type": "toggle", "name": "Ceiling", "entity": "light.living_room_ceiling" },
+        { "type": "sensor", "name": "Temperature", "entity": "sensor.living_room_temperature" },
+        { "type": "climate", "name": "Heating", "entity": "climate.living_room" }
+      ]
+    },
+    {
+      "name": "Bedroom",
+      "devices": [
+        { "type": "toggle", "name": "Bedside", "entity": "light.bedside" },
+        { "type": "lock", "name": "Front Door", "entity": "lock.front_door" }
+      ]
+    }
+  ]
+}

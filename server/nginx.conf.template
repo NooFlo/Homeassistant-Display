@@ -12,6 +12,14 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Rendered dashboard image + touch-region map from the renderer
+    # container. Served with no-store: the native loop does its own
+    # content-comparison and only repaints on change.
+    location /generated/ {
+        add_header Cache-Control "no-store, must-revalidate";
+        add_header Pragma "no-cache";
+    }
+
     # The stock browser aggressively reuses stale page snapshots.
     location / {
         add_header Cache-Control "no-store, must-revalidate";
