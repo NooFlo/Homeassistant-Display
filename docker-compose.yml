@@ -10,3 +10,18 @@ services:
     volumes:
       - ./server/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./kindle-ui/html:/usr/share/nginx/html:ro
+
+  # Renders HA state to dashboard.png + dashboard.map for the native
+  # kiosk (kiosk-native.sh). The browser UI does not need it.
+  kindle-renderer:
+    build: ./renderer
+    container_name: kindle-renderer
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - OUT_DIR=/generated
+      - RENDER_INTERVAL=30
+    volumes:
+      - ./renderer/config.json:/app/config.json:ro
+      - ./kindle-ui/html/generated:/generated
